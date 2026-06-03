@@ -184,9 +184,9 @@ function evaluateRagasLocally({
     round(textSimilarity(item, answer))
   )
 
-  const relevantSentences = contextSentences.filter(
-    (sentence) => textSimilarity(question, sentence) >= 0.04
-  )
+  const relevantSentences = contextSentences.filter((sentence) => {
+    return textSimilarity(question, sentence) >= 0.04
+  })
 
   const scores = {
     faithfulness: round(faithfulness),
@@ -218,20 +218,22 @@ function textSimilarity(a: string, b: string) {
 
   const vocabulary = Array.from(new Set([...aTokens, ...bTokens]))
 
-  const aVector = vocabulary.map((term) =>
-    aTokens.filter((token) => token === term).length
-  )
-  const bVector = vocabulary.map((term) =>
-    bTokens.filter((token) => token === term).length
-  )
+  const aVector = vocabulary.map((term) => {
+    return aTokens.filter((token) => token === term).length
+  })
+
+  const bVector = vocabulary.map((term) => {
+    return bTokens.filter((token) => token === term).length
+  })
 
   const cosine = cosineSimilarity(aVector, bVector)
 
   const aSet = new Set(aTokens)
   const bSet = new Set(bTokens)
 
-  const intersection = Array.from(aSet).filter((token) => bSet.has(token))
-    .length
+  const intersection = Array.from(aSet).filter((token) => {
+    return bSet.has(token)
+  }).length
 
   const overlap = intersection / Math.min(aSet.size, bSet.size)
 
@@ -239,9 +241,9 @@ function textSimilarity(a: string, b: string) {
 }
 
 function usefulTokens(text: string) {
-  return tokenize(text).filter(
-    (token) => token.length > 1 && !/^[.,!?؟؛:]$/.test(token)
-  )
+  return tokenize(text).filter((token) => {
+    return token.length > 1 && !/^[.,!?؟؛:]$/.test(token)
+  })
 }
 
 function extractMainKeyword(question: string) {
