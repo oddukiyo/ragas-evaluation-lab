@@ -3,11 +3,9 @@
 import { useMemo, useState } from "react"
 import {
   Activity,
-  BarChart3,
   Brain,
   FileSearch,
   KeyRound,
-  Layers3,
   MessageSquareText,
   Network,
   ShieldCheck,
@@ -115,29 +113,6 @@ export default function Home() {
               chunking تا vectorization، retrieval، تولید پاسخ با API و ارزیابی
               سه معیار اصلی مقاله RAGAS.
             </p>
-          </div>
-
-          <div className="pipeline-card">
-            <PipelineStep
-              icon={<Layers3 size={16} />}
-              text="Tokenization + Chunking"
-            />
-            <PipelineStep
-              icon={<Network size={16} />}
-              text="TF-IDF Word Vectorization"
-            />
-            <PipelineStep
-              icon={<FileSearch size={16} />}
-              text="Cosine Similarity Retrieval"
-            />
-            <PipelineStep
-              icon={<MessageSquareText size={16} />}
-              text="API-based Answer Generation"
-            />
-            <PipelineStep
-              icon={<BarChart3 size={16} />}
-              text="RAGAS-style Evaluation"
-            />
           </div>
         </div>
       </section>
@@ -274,21 +249,7 @@ export default function Home() {
   )
 }
 
-function PipelineStep({
-  icon,
-  text,
-}: {
-  icon: React.ReactNode
-  text: string
-}) {
-  return (
-    <div className="pipeline-step">
-      <span className="dot" />
-      {icon}
-      <span>{text}</span>
-    </div>
-  )
-}
+
 
 function MetricPanel({ evaluation }: { evaluation?: Evaluation }) {
   return (
