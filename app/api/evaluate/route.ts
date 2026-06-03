@@ -278,6 +278,11 @@ function buildReport(scores: {
       ? "The retrieved context is relatively focused."
       : "The retrieved context may include extra or weakly relevant information."
   )
-
   return comments.join(" ")
 }
+
+function removeDiacritics(text: string) {
+  return text.replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, "")
+}
+
+
