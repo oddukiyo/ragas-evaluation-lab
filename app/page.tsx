@@ -201,7 +201,7 @@ export default function Home() {
             id="question"
             className="textarea"
             value={question}
-            onChange={(event) => setQuestion(event.target.value)}
+            onChange={(event) => setQuestion(cleanPersianText(event.target.value))}
           />
 
           <button
@@ -220,7 +220,7 @@ export default function Home() {
                 onClick={() => setQuestion(sample)}
                 type="button"
               >
-                {sample}
+                {cleanPersianText(sample)}
               </button>
             ))}
           </div>
@@ -238,8 +238,9 @@ export default function Home() {
             <div className="answer-box">
               {isLoading
                 ? "در حال بازیابی context، تولید پاسخ و محاسبه معیارها..."
-                : result?.answer ||
-                  "بعد از اجرای pipeline، پاسخ مدل در این بخش نمایش داده می‌شود."}
+                : result?.answer 
+                  ? cleanPersianText(result.answer)
+                  : "بعد از اجرای pipeline، پاسخ مدل در این بخش نمایش داده می‌شود."}
             </div>
           </div>
 
@@ -405,11 +406,15 @@ function ContextPanel({ chunks }: { chunks: RetrievedChunk[] }) {
                 <span>{chunk.id}</span>
                 <span>similarity: {chunk.score.toFixed(3)}</span>
               </div>
-              <div className="context-text">{chunk.text}</div>
+              <div className="context-text">{cleanPersianText(chunk.text)}</div>
             </div>
           ))
         )}
       </div>
     </div>
   )
+}
+
+function cleanPersianText(text: string) {
+  return text.replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, "")
 }
