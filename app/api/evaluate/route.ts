@@ -56,6 +56,7 @@ export async function POST(request: Request) {
     const answerPrompt = `
 You are a RAG assistant for a student project about the RAGAS paper.
 Answer the question in Persian.
+Do not use Arabic/Persian diacritics or vowel marks such as َ ِ ُ ّ ْ.
 Use only the retrieved context below.
 If the context is insufficient, say that the retrieved context is insufficient.
 
@@ -72,17 +73,19 @@ ${input.question}
       prompt: answerPrompt,
       temperature: 0,
     })
+    
+    const cleanAnswer = removeDiacritics(answerOutput.content)
 
     const evaluation = evaluateRagasLocally({
       question: input.question,
-      answer: answerOutput.content,
+      answer: CleanAnswer,
       context,
       retrievedChunks: retrieval.retrieved,
     })
 
     return NextResponse.json({
       question: input.question,
-      answer: answerOutput.content,
+      answer: CleanAnswer,
       model: answerOutput.model,
       retrievedChunks: retrieval.retrieved,
       stats: retrieval.stats,
