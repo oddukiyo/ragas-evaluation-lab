@@ -58,7 +58,7 @@ select {
   padding: 34px 0 54px;
 }
 
-/* حذف کامل کادر بزرگ بالای صفحه */
+
 .hero {
   display: none;
 }
@@ -149,7 +149,7 @@ select {
   gap: 12px;
 }
 
-/* دکمه اصلی فقط بنفش */
+
 .primary-button {
   width: 100%;
   margin-top: 16px;
@@ -183,7 +183,7 @@ select {
   margin-top: 12px;
 }
 
-/* دکمه‌های سوال آماده: بنفش شیشه‌ای */
+
 .sample-button {
   border: 1px solid rgba(168, 85, 247, 0.34);
   border-radius: 14px;
