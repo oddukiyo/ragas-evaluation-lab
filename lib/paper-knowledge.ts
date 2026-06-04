@@ -1,16 +1,208 @@
-export const PAPER_KNOWLEDGE = `
-RAGAS stands for Retrieval Augmented Generation Assessment. It is a framework for reference-free evaluation of Retrieval-Augmented Generation systems. A RAG system usually has two main parts: a retriever and a generator. The retriever selects relevant passages from a document collection, and the generator uses the retrieved context and the user question to produce an answer.
-RAG is useful because large language models may not know events that happened after training and may also struggle with rare or long-tail knowledge. By retrieving external context, a RAG system can provide more up-to-date and grounded responses and reduce hallucination.
-RAGAS evaluates RAG pipelines without requiring a human-written reference answer. This is important because in many practical RAG applications, ground-truth answers are not available.
-The first metric is Faithfulness. Faithfulness checks whether the claims in the generated answer can be inferred from the retrieved context. The answer is decomposed into simple statements, and each statement is checked against the context. The score is the number of supported statements divided by the total number of statements.
-Faithfulness is not exactly the same as truthfulness. If the retrieved context itself is wrong and the answer follows that wrong context, the answer can still be faithful to the context.
-The second metric is Answer Relevance. Answer Relevance checks whether the generated answer directly addresses the original question. It penalizes incomplete answers, redundant information, and answers that discuss a side topic instead of answering the actual question.
-In the RAGAS paper, Answer Relevance is estimated by generating possible questions from the answer and then comparing those generated questions with the original question using embeddings and cosine similarity.
-The third metric is Context Relevance. Context Relevance checks whether the retrieved context is focused and useful for answering the question. A context that contains the answer but also includes many irrelevant sentences should receive a lower score.
-The RAGAS paper computes Context Relevance by asking a language model to extract the sentences from the context that are necessary to answer the question. The score is the number of extracted relevant sentences divided by the total number of sentences in the retrieved context.
-The paper introduces WikiEval as a dataset for evaluating RAGAS metrics. WikiEval contains question-context-answer examples with human judgments. It was created using Wikipedia pages about events after 2022 and includes annotations for Faithfulness, Answer Relevance, and Context Relevance.
-The experiments compare RAGAS with baseline methods such as GPT Score and GPT Ranking. The reported results show that RAGAS aligns better with human judgments, especially for Faithfulness and Answer Relevance. Context Relevance is described as the hardest dimension to evaluate.
-One limitation of RAGAS is that it depends on the language model used as evaluator. If the evaluator model makes mistakes, the final RAGAS score can also be unreliable. The paper also notes reproducibility challenges because repeated LLM calls can produce slightly different outputs.
-RAGAS can be used in many real applications such as customer support chatbots, legal document question answering, medical document search, academic research assistants, enterprise knowledge management systems, financial report analysis, and educational tutoring systems.
-A technical RAG pipeline usually includes preprocessing, tokenization, chunking, vectorization or embedding, similarity search, context retrieval, prompt construction, answer generation, and evaluation. This demo implements these stages in a simplified way for educational purposes.
-`
+export const PAPER_KNOWLEDGE = String.raw`
+RAGAs: Automated Evaluation of Retrieval Augmented Generation
+
+این متن دانش‌بیس پروژه است و بر اساس ترجمه مقاله RAGAs آماده شده است. هدف آن این است که سایت بتواند هنگام پرسیدن سؤال، ابتدا بخش‌های مرتبط از مقاله را بازیابی کند، سپس پاسخ را بر اساس همان بخش‌ها تولید کند و در نهایت پاسخ را با معیارهای RAGAS-style ارزیابی کند.
+
+چکیده مقاله:
+RAGAs مخفف Retrieval Augmented Generation Assessment است؛ یعنی ارزیابی تولید تقویت‌شده با بازیابی اطلاعات. RAGAs یک چارچوب برای ارزیابی بدون نیاز به پاسخ مرجع در سیستم‌های RAG است. سیستم‌های RAG از دو بخش اصلی تشکیل می‌شوند: ماژول بازیابی اطلاعات و ماژول تولید پاسخ مبتنی بر مدل زبانی بزرگ یا LLM. ماژول بازیابی، متن‌ها یا قطعه‌های مرتبط را از مجموعه اسناد پیدا می‌کند. ماژول تولید پاسخ، با استفاده از سؤال کاربر و متن‌های بازیابی‌شده، پاسخ نهایی را تولید می‌کند.
+
+سیستم‌های RAG به مدل‌های زبانی کمک می‌کنند تا به منابع خارجی تکیه کنند، اطلاعات به‌روزتری داشته باشند و احتمال تولید پاسخ‌های خیالی یا hallucination کاهش پیدا کند. با این حال، ارزیابی سیستم‌های RAG ساده نیست، چون باید چند بُعد مختلف بررسی شود: آیا بازیابی اطلاعات درست انجام شده است؟ آیا پاسخ تولیدشده به متن بازیابی‌شده وفادار است؟ آیا پاسخ واقعاً به سؤال کاربر مربوط است؟ آیا context بازیابی‌شده مفید و متمرکز است؟
+
+مقاله RAGAs برای حل این مشکل، معیارهایی را معرفی می‌کند که بدون نیاز به پاسخ مرجع انسانی می‌توانند کیفیت سیستم‌های RAG را ارزیابی کنند. این معیارها به توسعه‌دهندگان کمک می‌کنند سیستم‌های RAG را سریع‌تر و دقیق‌تر ارزیابی کنند.
+
+مقدمه:
+مدل‌های زبانی مقدار زیادی دانش درباره جهان در خود ذخیره می‌کنند و می‌توانند به بسیاری از پرسش‌ها پاسخ دهند. اما استفاده از مدل‌های زبانی به عنوان پایگاه دانش دو محدودیت اصلی دارد. محدودیت اول این است که مدل‌ها اطلاعات بعد از زمان آموزش خود را ندارند. مثلاً اگر مدلی تا سال ۲۰۲۳ آموزش دیده باشد، درباره رویدادهای ۲۰۲۴ یا ۲۰۲۵ اطلاعات قطعی ندارد. محدودیت دوم این است که مدل‌ها در یادگیری و حفظ اطلاعات کم‌تکرار ضعیف‌تر عمل می‌کنند.
+
+راه‌حل رایج برای این مشکل، Retrieval Augmented Generation یا RAG است. در RAG، وقتی کاربر سؤال می‌پرسد، سیستم ابتدا قطعه‌های مرتبط از یک مجموعه اسناد را بازیابی می‌کند. سپس این قطعه‌ها همراه با سؤال اصلی به مدل زبانی داده می‌شوند تا مدل بر اساس آن‌ها پاسخ تولید کند. به بیان ساده، در سیستم RAG، مدل قبل از پاسخ دادن ابتدا اطلاعات مرتبط را از منابع بیرونی پیدا می‌کند و بعد با کمک آن‌ها جواب می‌دهد.
+
+عملکرد سیستم RAG به عوامل مختلفی وابسته است: مدل بازیابی اطلاعات، مجموعه اسناد، مدل زبانی، طراحی پرامپت، و شیوه ترکیب سؤال با متن‌های بازیابی‌شده. به همین دلیل، ارزیابی خودکار سیستم‌های RAG اهمیت زیادی دارد.
+
+RAGAs چارچوبی برای ارزیابی خودکار سیستم‌های تولید تقویت‌شده با بازیابی اطلاعات است. تمرکز این مقاله روی موقعیت‌هایی است که پاسخ مرجع یا ground truth در دسترس نیست. در این حالت، هدف این است که معیارهایی برای تخمین درستی پاسخ و مفید بودن متن‌های بازیابی‌شده طراحی شود.
+
+کارهای مرتبط:
+در پژوهش‌های قبلی، مسئله hallucination یا تولید اطلاعات خیالی در پاسخ‌های مدل‌های زبانی بررسی شده است. بعضی روش‌ها از few-shot prompting استفاده می‌کنند تا مدل بتواند درستی یا نادرستی پاسخ را تشخیص دهد. برخی روش‌ها پاسخ تولیدشده را به حقایق موجود در پایگاه دانش خارجی وصل می‌کنند. برخی روش‌ها احتمال توکن‌ها را بررسی می‌کنند و فرض می‌کنند مدل در پاسخ‌های واقعی اعتماد بیشتری دارد.
+
+روش‌هایی مانند BARTScore، GPTScore، GPT Ranking، SelfCheckGPT، BERTScore و MoverScore نیز برای ارزیابی متن تولیدشده استفاده شده‌اند. اما بسیاری از این روش‌ها یا به پاسخ مرجع نیاز دارند، یا به احتمال خروجی مدل دسترسی می‌خواهند، یا به طراحی پرامپت بسیار حساس هستند. این موضوع برای مدل‌های بسته‌ای مثل ChatGPT و GPT-4 مشکل‌ساز است، چون احتمال توکن‌ها یا حالت‌های پنهان مدل در دسترس کاربر نیست.
+
+مشکل اصلی این است که در بسیاری از کاربردهای RAG، پاسخ مرجع انسانی وجود ندارد. بنابراین RAGAs تلاش می‌کند معیارهایی ارائه دهد که بدون پاسخ مرجع هم بتوانند کیفیت سیستم RAG را ارزیابی کنند.
+
+راهبردهای ارزیابی در RAGAs:
+فرض کنید سؤال کاربر با q نشان داده شود. سیستم برای این سؤال یک متن یا مجموعه‌ای از متن‌های مرتبط را بازیابی می‌کند که با c(q) نشان داده می‌شود. سپس سیستم با استفاده از سؤال و متن بازیابی‌شده پاسخی تولید می‌کند که با as(q) نشان داده می‌شود.
+
+RAGAs سه جنبه کیفی اصلی را بررسی می‌کند:
+1. Faithfulness یا پایبندی پاسخ به متن
+2. Answer Relevance یا ارتباط پاسخ با سؤال
+3. Context Relevance یا ارتباط متن بازیابی‌شده با سؤال
+
+Faithfulness:
+Faithfulness یعنی پاسخ باید بر اساس متن بازیابی‌شده باشد. پاسخ زمانی faithful یا وفادار است که ادعاهای مطرح‌شده در آن از متن بازیابی‌شده قابل استنتاج باشند. این معیار برای جلوگیری از hallucination اهمیت زیادی دارد. اگر پاسخ به متن بازیابی‌شده پایبند باشد، می‌توان گفت متن بازیابی‌شده نقش سند یا توجیه برای پاسخ را دارد.
+
+روش محاسبه Faithfulness:
+در RAGAs ابتدا پاسخ تولیدشده به مجموعه‌ای از گزاره‌ها یا statements تبدیل می‌شود. این کار با کمک یک LLM انجام می‌شود. هدف این است که جمله‌های بلند پاسخ به ادعاهای کوتاه‌تر و مشخص‌تر تبدیل شوند.
+
+پرامپت استخراج گزاره‌ها:
+Given a question and answer, create one or more statements from each sentence in the given answer.
+question: [question]
+answer: [answer]
+
+ترجمه:
+با داشتن یک سؤال و یک پاسخ، از هر جمله پاسخ داده‌شده، یک یا چند گزاره بساز.
+سؤال: [question]
+پاسخ: [answer]
+
+بعد از استخراج گزاره‌ها، هر گزاره با متن بازیابی‌شده مقایسه می‌شود تا مشخص شود آیا آن گزاره از context قابل پشتیبانی است یا نه.
+
+پرامپت اعتبارسنجی گزاره‌ها:
+Consider the given context and following statements, then determine whether they are supported by the information present in the context. Provide a brief explanation for each statement before arriving at the verdict Yes or No.
+
+ترجمه:
+با توجه به متن داده‌شده و گزاره‌های زیر، مشخص کن آیا این گزاره‌ها توسط اطلاعات موجود در متن پشتیبانی می‌شوند یا نه. برای هر گزاره توضیح کوتاه بده و در پایان حکم نهایی را با بله یا خیر مشخص کن.
+
+فرمول Faithfulness:
+Faithfulness = تعداد گزاره‌های پشتیبانی‌شده توسط context / تعداد کل گزاره‌های استخراج‌شده از پاسخ
+
+اگر پاسخ شامل ۵ گزاره باشد و ۴ گزاره توسط متن پشتیبانی شوند:
+Faithfulness = 4 / 5 = 0.8
+
+Answer Relevance:
+Answer Relevance بررسی می‌کند آیا پاسخ تولیدشده مستقیماً و مناسب به سؤال کاربر پاسخ داده است یا نه. این معیار factuality یا درستی واقعی پاسخ را بررسی نمی‌کند. ممکن است پاسخی از نظر واقعی درست باشد، اما به سؤال کاربر مربوط نباشد. این معیار پاسخ‌های ناقص، پاسخ‌های دارای اطلاعات اضافی و پاسخ‌هایی که به موضوع حاشیه‌ای می‌پردازند را جریمه می‌کند.
+
+روش محاسبه Answer Relevance:
+برای محاسبه این معیار، RAGAs از LLM می‌خواهد چند سؤال احتمالی از روی پاسخ تولید کند. اگر پاسخ واقعاً به سؤال اصلی مربوط باشد، سؤال‌هایی که از روی آن پاسخ ساخته می‌شوند باید به سؤال اصلی شباهت داشته باشند.
+
+پرامپت تولید سؤال از پاسخ:
+Generate a question for the given answer.
+answer: [answer]
+
+ترجمه:
+برای پاسخ داده‌شده، یک سؤال تولید کن.
+پاسخ: [answer]
+
+بعد از تولید سؤال‌ها، embedding یا نمایش برداری هر سؤال ساخته می‌شود و شباهت آن با سؤال اصلی با cosine similarity محاسبه می‌شود.
+
+فرمول Answer Relevance:
+Answer Relevance = میانگین شباهت کسینوسی بین سؤال اصلی و سؤال‌هایی که از روی پاسخ تولید شده‌اند
+
+اگر پاسخ واقعاً مرتبط باشد، سؤال‌های ساخته‌شده از روی پاسخ هم باید به سؤال اصلی نزدیک باشند و نمره Answer Relevance بالا می‌رود.
+
+Context Relevance:
+Context Relevance بررسی می‌کند آیا متن بازیابی‌شده برای پاسخ دادن به سؤال مفید، متمرکز و مرتبط است یا نه. متن بازیابی‌شده زمانی مرتبط است که فقط شامل اطلاعات لازم برای پاسخ دادن به سؤال باشد. این معیار متن‌هایی را که اطلاعات اضافی، زائد یا نامربوط دارند جریمه می‌کند.
+
+اهمیت Context Relevance:
+متن طولانی هزینه پردازش بیشتری دارد و ممکن است باعث شود مدل زبانی اطلاعات مهم را در میان اطلاعات اضافی گم کند. بنابراین context خوب باید هم جواب را داشته باشد و هم تا حد ممکن متمرکز باشد.
+
+روش محاسبه Context Relevance:
+RAGAs سؤال و متن بازیابی‌شده را به مدل می‌دهد و از مدل می‌خواهد جمله‌هایی را از context استخراج کند که برای پاسخ دادن به سؤال ضروری هستند.
+
+پرامپت استخراج جمله‌های مرتبط:
+Please extract relevant sentences from the provided context that can potentially help answer the following question. If no relevant sentences are found, or if you believe the question cannot be answered from the given context, return the phrase Insufficient Information. While extracting candidate sentences you are not allowed to make any changes to sentences from given context.
+
+ترجمه:
+لطفاً جمله‌های مرتبط را از متن داده‌شده استخراج کن؛ جمله‌هایی که می‌توانند برای پاسخ دادن به سؤال کمک‌کننده باشند. اگر جمله مرتبطی پیدا نشد یا نمی‌توان از متن به سؤال پاسخ داد، عبارت Insufficient Information را برگردان. هنگام استخراج جمله‌ها اجازه نداری آن‌ها را تغییر بدهی.
+
+فرمول Context Relevance:
+Context Relevance = تعداد جمله‌های ضروری و مرتبط استخراج‌شده از context / تعداد کل جمله‌های موجود در context
+
+اگر context خیلی طولانی باشد ولی فقط چند جمله آن برای پاسخ لازم باشد، نمره Context Relevance پایین‌تر می‌شود.
+
+WikiEval:
+برای ارزیابی چارچوب RAGAs، نویسندگان به نمونه‌هایی شامل سؤال، context و پاسخ همراه با قضاوت انسانی نیاز داشتند. چون دیتاست عمومی مناسبی برای این هدف وجود نداشت، دیتاست جدیدی به نام WikiEval ساخته شد.
+
+نحوه ساخت WikiEval:
+برای ساخت WikiEval، ابتدا ۵۰ صفحه از ویکی‌پدیا انتخاب شد. این صفحه‌ها درباره رویدادهایی بودند که از ابتدای سال ۲۰۲۲ به بعد رخ داده بودند. برای هر صفحه، از ChatGPT خواسته شد سؤالی طراحی کند که پاسخ آن از بخش مقدماتی صفحه قابل استخراج باشد.
+
+پرامپت تولید سؤال در WikiEval:
+Your task is to formulate a question from given context satisfying the rules given below:
+1. The question should be fully answered from the given context.
+2. The question should be framed from a part that contains non-trivial information.
+3. The answer should not contain any links.
+4. The question should be of moderate difficulty.
+5. The question must be reasonable and must be understood and responded to by humans.
+6. Do not use phrases like provided context in the question.
+
+ترجمه:
+بر اساس متن داده‌شده، سؤالی طراحی کن که کاملاً از متن قابل پاسخ باشد، از بخش دارای اطلاعات غیرسطحی ساخته شود، شامل لینک نباشد، دشواری متوسط داشته باشد، منطقی و قابل فهم برای انسان باشد، و در سؤال از عباراتی مانند متن داده‌شده استفاده نشود.
+
+بعد از تولید سؤال، از ChatGPT خواسته شد با استفاده از همان متن به سؤال پاسخ دهد. سپس دو ارزیاب انسانی، نمونه‌ها را از نظر Faithfulness، Answer Relevance و Context Relevance بررسی کردند. میزان توافق انسانی برای Faithfulness و Context Relevance حدود ۹۵ درصد و برای Answer Relevance حدود ۹۰ درصد گزارش شد.
+
+نمونه Faithfulness:
+در مثال فیلم Oppenheimer، پاسخ faithful می‌گوید Christopher Nolan کارگردان فیلم است و Cillian Murphy نقش J. Robert Oppenheimer را بازی می‌کند. این اطلاعات با متن منبع هماهنگ است. پاسخ غیر faithful اطلاعات نادرستی مانند James Cameron و Tom Cruise را وارد می‌کند که در متن وجود ندارد و با متن ناسازگار است.
+
+نمونه Answer Relevance:
+در مثال مأموریت PSLV-C56، پاسخ مرتبط تاریخ، زمان و محل پرتاب را دقیق بیان می‌کند. پاسخ کم‌ارتباط درباره اهمیت کلی مأموریت حرف می‌زند اما به تاریخ، زمان و محل پرتاب درست و کامل پاسخ نمی‌دهد.
+
+نمونه Context Relevance:
+در مثال برج ساعت Chimnabai، context با ارتباط بالا فقط اطلاعات لازم برای پاسخ را دارد: زمان تکمیل برج و اینکه به نام چه کسی نام‌گذاری شده است. context با ارتباط پایین همان جواب را دارد اما اطلاعات اضافی زیادی درباره سبک معماری، تاریخچه و هزینه ساخت اضافه می‌کند. بنابراین نمره Context Relevance پایین‌تر می‌آید.
+
+آزمایش‌ها:
+در آزمایش‌ها، معیارهای RAGAs با قضاوت انسانی روی دیتاست WikiEval مقایسه شدند. نتایج با معیار accuracy گزارش شدند؛ یعنی درصد مواردی که معیار خودکار با ارزیابی انسان هم‌نظر بوده است.
+
+روش‌های پایه برای مقایسه:
+1. GPT Score
+2. GPT Ranking
+
+روش GPT Score:
+در این روش، از ChatGPT خواسته می‌شود برای هر معیار کیفی مانند Faithfulness، نمره‌ای از ۰ تا ۱۰ بدهد. برای مثال، برای Faithfulness به مدل گفته می‌شود هر ادعایی در پاسخ که از context قابل استنتاج نباشد باید جریمه شود.
+
+روش GPT Ranking:
+در این روش، به جای نمره‌دهی، از ChatGPT خواسته می‌شود از میان دو پاسخ یا دو متن، گزینه بهتر را انتخاب کند. برای مثال، برای Answer Relevance دو پاسخ به مدل داده می‌شود و مدل باید پاسخ مرتبط‌تر را انتخاب کند.
+
+نتایج جدول ۴:
+RAGAs برای Faithfulness نمره 0.95، برای Answer Relevance نمره 0.78 و برای Context Relevance نمره 0.70 به دست آورد.
+GPT Score برای Faithfulness نمره 0.72، برای Answer Relevance نمره 0.52 و برای Context Relevance نمره 0.63 داشت.
+GPT Ranking برای Faithfulness نمره 0.54، برای Answer Relevance نمره 0.40 و برای Context Relevance نمره 0.52 داشت.
+
+نتیجه آزمایش‌ها:
+معیارهای RAGAs نسبت به روش‌های پایه هماهنگی بیشتری با قضاوت انسانی داشتند. Faithfulness دقیق‌ترین نتیجه را داشت. Answer Relevance کمی سخت‌تر بود چون تفاوت بین پاسخ‌ها گاهی ظریف است. Context Relevance سخت‌ترین معیار بود، چون انتخاب جمله‌های واقعاً ضروری از context طولانی برای مدل دشوار است.
+
+بازتولیدپذیری:
+بازتولید نتایج با مدل‌های زبانی بزرگ دشوار است. چند اجرای یک آزمایش با تنظیمات مشابه ممکن است نتیجه‌های متفاوتی بدهد. دلایل این تفاوت می‌تواند تغییرات API، تصادفی بودن مدل، تفاوت در نمونه‌گیری خروجی و تفاوت در قالب پاسخ باشد.
+
+RAGAs از LLM می‌خواهد خروجی را در قالب JSON تولید کند. نویسندگان دریافتند که استفاده از JSON باعث می‌شود RAGAs با مدل‌های مختلف سازگارتر باشد و نرخ خطا هنگام پردازش خروجی کاهش پیدا کند. شکل ۱ نشان می‌دهد وقتی خروجی‌ها در قالب JSON هستند، نمره‌ها در اجراهای مختلف پایدارتر و سازگارتر می‌شوند.
+
+API پایتون RAGAs:
+RAGAs امکان دسترسی به معیارها و دیتاست‌ها را از طریق یک API ساده پایتون فراهم می‌کند. نحو آن شبیه کتابخانه‌هایی مانند transformers و datasets است. بعد از نصب RAGAs، می‌توان یک دیتاست را بارگذاری کرد، یک pipeline را با معیارهای موردنظر ارزیابی کرد و نتایج را به dataframe در pandas تبدیل کرد.
+
+نمونه کد Python API:
+
+from ragas.metrics import (
+    answer_relevancy,
+    faithfulness,
+    context_relevancy,
+)
+
+from ragas import evaluate
+from datasets import load_dataset
+
+amnesty_qa = load_dataset(
+    "explodinggradients/amnesty_qa",
+    "english_v2",
+)
+
+result = evaluate(
+    amnesty_qa["eval"],
+    metrics=[
+        faithfulness,
+        answer_relevancy,
+        context_relevancy,
+    ],
+)
+
+df = result.to_pandas()
+
+توضیح کد:
+در ابتدا سه معیار اصلی RAGAs یعنی answer_relevancy، faithfulness و context_relevancy از ragas.metrics وارد می‌شوند. سپس تابع evaluate از کتابخانه ragas import می‌شود. تابع load_dataset از کتابخانه datasets برای بارگذاری دیتاست استفاده می‌شود. دیتاست amnesty_qa از مسیر explodinggradients/amnesty_qa با نسخه english_v2 بارگذاری می‌شود. سپس تابع evaluate روی بخش eval دیتاست اجرا می‌شود و سه معیار را محاسبه می‌کند. در پایان نتیجه با to_pandas به DataFrame تبدیل می‌شود تا بتوان آن را راحت‌تر مشاهده و تحلیل کرد.
+
+محدودیت‌ها:
+RAGAs به عملکرد مدل‌های زبانی‌ای وابسته است که برای ارزیابی استفاده می‌شوند. اگر مدل ارزیاب اشتباه کند، نمره RAGAs نیز ممکن است اشتباه شود. همچنین استفاده از LLMها محدودیت‌هایی مثل ناپایداری خروجی، حساسیت به پرامپت، تغییرات API و هزینه دارد. نویسندگان اشاره می‌کنند که در حالت ایده‌آل بهتر است مدل‌های باز نسبت به محصولات بسته و پولی در اولویت قرار گیرند، چون این کار محیط سالم‌تری برای توسعه و پژوهش ایجاد می‌کند.
+
+نتیجه‌گیری:
+مقاله RAGAs نیاز به ارزیابی خودکار و بدون پاسخ مرجع برای سیستم‌های RAG را برجسته می‌کند. این چارچوب سه جنبه مهم را بررسی می‌کند: آیا پاسخ تولیدشده بر اساس متن بازیابی‌شده است؟ آیا پاسخ واقعاً به سؤال داده‌شده پاسخ می‌دهد؟ آیا متن بازیابی‌شده به اندازه کافی متمرکز و مرتبط است؟
+
+RAGAs با معرفی معیارهای Faithfulness، Answer Relevance و Context Relevance، به توسعه‌دهندگان کمک می‌کند حتی در نبود ground truth یا پاسخ مرجع، کیفیت سیستم‌های RAG را ارزیابی کنند. ارزیابی انجام‌شده روی WikiEval نشان داد پیش‌بینی‌های RAGAs به‌خوبی با قضاوت انسانی هم‌راستا هستند، مخصوصاً در معیارهای Faithfulness و Answer Relevance.
+
+ارتباط این متن با پروژه وب:
+در پروژه وب فعلی، این متن به عنوان knowledge base استفاده می‌شود. وقتی کاربر سؤال می‌پرسد، سیستم همین متن را tokenization می‌کند، آن را به chunkهای کوچک‌تر تقسیم می‌کند، هر chunk را با TF-IDF به بردار عددی تبدیل می‌کند و سپس با cosine similarity مرتبط‌ترین بخش‌ها را پیدا می‌کند. بعد سؤال کاربر همراه با contextهای بازیابی‌شده به API ارسال می‌شود تا پاسخ تولید شود. در پایان، پاسخ با معیارهای RAGAS-style ارزیابی می‌شود.
+
+در این پروژه از کتابخانه رسمی Python RAGAS به طور مستقیم استفاده نشده است. هدف پروژه بازتولید آموزشی و قابل توضیح منطق مقاله است. بنابراین مراحل اصلی یعنی tokenization، chunking، vectorization، retrieval، answer generation و evaluation داخل پروژه پیاده‌سازی شده‌اند تا برای ارائه کلاسی قابل مشاهده و قابل دفاع باشند.
+`;
